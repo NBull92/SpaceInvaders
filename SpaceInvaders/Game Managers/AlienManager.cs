@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
 using SpaceInvaders.GameObjects;
+using SpaceInvaders.Iterator;
 
 namespace SpaceInvaders.Game_Managers
 {
@@ -11,6 +12,7 @@ namespace SpaceInvaders.Game_Managers
         private static readonly Random ShootingRandom = new Random();
         private const int AlienColumns = 11;
         private const int AlienRows = 5;
+        private readonly IIterator<Alien> _iterator;
         private Alien[,] _aliens;
         private Movement _currentMovement;
         private int _freezeAlienShootUpdate = 25;
@@ -19,6 +21,7 @@ namespace SpaceInvaders.Game_Managers
         {
             Populate();
             _currentMovement = Movement.Right;
+            _iterator = new TwoDimensionalArrayIterator(this);
         }
 
         public void Populate()
@@ -43,25 +46,26 @@ namespace SpaceInvaders.Game_Managers
         {
             if (AnyHitRightBounds())
             {
-                for (var i = 0; i < AlienColumns; i++)
+                while (_iterator.HasNext())
                 {
-                    for (var j = 0; j < AlienRows; j++)
-                    {
-                        _aliens[i, j].Update(Movement.Down);
-                    }
+                    var current = _iterator.Current();
+                    current.Update(Movement.Down);
+                    _iterator.Next();
                 }
+
+                _iterator.Reset();
 
                 _currentMovement = Movement.Right;
             }
             else if(AnyHitLeftBounds())
             {
-                for (var i = 0; i < AlienColumns; i++)
+                while (_iterator.HasNext())
                 {
-                    for (var j = 0; j < AlienRows; j++)
-                    {
-                        _aliens[i, j].Update(Movement.Down);
-                    }
+                    var current = _iterator.Current();
+                    current.Update(Movement.Down);
+                    _iterator.Next();
                 }
+                _iterator.Reset();
 
                 _currentMovement = Movement.Left;
             }
@@ -87,17 +91,17 @@ namespace SpaceInvaders.Game_Managers
                 speedMultiplier = 2;
             }
 
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
+                var current = _iterator.Current();
+                current.Update(_currentMovement, speedMultiplier);
+                if (current.Bullets.Any(o => o.IsAlive))
                 {
-                    _aliens[i, j].Update(_currentMovement, speedMultiplier);
-                    if (_aliens[i, j].Bullets.Any(o => o.IsAlive))
-                    {
-                        _aliens[i, j].Bullets.ForEach(o => o.Update());
-                    }
+                    current.Bullets.ForEach(o => o.Update());
                 }
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             RandomAlienShoot();
         }
@@ -148,63 +152,66 @@ namespace SpaceInvaders.Game_Managers
 
         public void Render(UIElementCollection canvasChildren)
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
+                var current = _iterator.Current();
+                var rendered = current.Render();
+
+                if (rendered != null)
+                    canvasChildren.Add(rendered);
+
+                var bullets = current.BulletRender();
+                if (bullets != null && bullets.Any())
                 {
-                    var alien = _aliens[i, j];
-                    var rendered = alien.Render();
-
-                    if (rendered != null)
-                        canvasChildren.Add(rendered);
-
-                    var bullets = alien.BulletRender();
-                    if (bullets != null && bullets.Any())
-                    {
-                        bullets.ForEach(o => canvasChildren.Add(o));
-                    }
+                    bullets.ForEach(o => canvasChildren.Add(o));
                 }
+
+                _iterator.Next();
             }
+            _iterator.Reset();
         }
 
         private bool AnyHitRightBounds()
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
-                {
-                    if (_aliens[i, j].IsAlive && _aliens[i, j].Position.X < 51)
-                        return true;
-                }
+                var current = _iterator.Current();
+                if (current.IsAlive && current.Position.X < 51)
+                    return true;
+
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             return false;
         }
 
         private bool AnyHitLeftBounds()
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
-                {
-                    if (_aliens[i, j].IsAlive && _aliens[i, j].Position.X > 750)
-                        return true;
-                }
+                var current = _iterator.Current();
+                if (current.IsAlive && current.Position.X > 750)
+                    return true;
+
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             return false;
         }
         
         public bool AnyAlive()
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
-                {
-                    if (_aliens[i, j].IsAlive)
-                        return true;
-                }
+                var current = _iterator.Current();
+                if (current.IsAlive)
+                    return true;
+
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             return false;
         }
@@ -213,14 +220,15 @@ namespace SpaceInvaders.Game_Managers
         {
             var list = new List<Alien>();
 
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
-                {
-                    if (_aliens[i, j].IsAlive)
-                        list.Add(_aliens[i, j]);
-                }
+                var current = _iterator.Current();
+                if (current.IsAlive)
+                    list.Add(current);
+
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             return list;
         }
@@ -232,26 +240,75 @@ namespace SpaceInvaders.Game_Managers
 
         public bool Landed()
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
-                {
-                    if (_aliens[i, j].IsAlive && _aliens[i, j].Position.Y >= 310)
-                        return true;
-                }
+                var current = _iterator.Current();
+                if (current.IsAlive && current.Position.Y >= 310)
+                    return true;
+
+                _iterator.Next();
             }
+            _iterator.Reset();
 
             return false;
         }
 
         public void OnGameOver(object sender, EventArgs e)
         {
-            for (var i = 0; i < AlienColumns; i++)
+            while (_iterator.HasNext())
             {
-                for (var j = 0; j < AlienRows; j++)
+                var current = _iterator.Current();
+                current.IsAlive = false;
+                _iterator.Next();
+            }
+            _iterator.Reset();
+        }
+
+        public class TwoDimensionalArrayIterator : IIterator<Alien>
+        {
+            private readonly AlienManager _alienManager;
+            private int _arrayIndex;
+            private int _columnIndex;
+            private int _rowIndex;
+
+            public TwoDimensionalArrayIterator(AlienManager alienManager)
+            {
+                _alienManager = alienManager;
+            }
+
+            public void Next()
+            {
+                if (_columnIndex < AlienColumns-1)
                 {
-                    _aliens[i, j].IsAlive = false;
+                    _columnIndex++;
                 }
+                else
+                {
+                    _columnIndex = 0;
+                    if (_rowIndex < AlienRows-1)
+                    {
+                        _rowIndex++;
+                    }
+                }
+
+                _arrayIndex++;
+            }
+
+            public Alien Current()
+            {
+                return _alienManager._aliens[_columnIndex, _rowIndex];
+            }
+
+            public bool HasNext()
+            {
+                return _arrayIndex < _alienManager._aliens.Length;
+            }
+
+            public void Reset()
+            {
+                _arrayIndex = 0;
+                _columnIndex = 0;
+                _rowIndex = 0;
             }
         }
     }
