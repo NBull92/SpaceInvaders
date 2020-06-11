@@ -5,19 +5,36 @@ namespace SpaceInvaders
 {
     public class ScoreFile
     {
-        private readonly string _fileName;
+        private FileInfo _fileInfo;
 
         public ScoreFile()
         {
-            _fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+            CreateFile();
+        }
+
+        private void CreateFile()
+        {
+            var fileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "SpaceInvaders",
                 "HighScore.txt");
+
+            _fileInfo = new FileInfo(fileName);
+
+            if (!_fileInfo.Directory.Exists)
+            {
+                _fileInfo.Directory.Create();
+            }
+
+            if (!_fileInfo.Exists)
+            {
+                var stream = _fileInfo.Create();
+                stream.Dispose();
+            }
         }
 
         public int GetHighScore()
         {
-            var fileInfo = new FileInfo(_fileName);
-            using (var sr = fileInfo.OpenText())
+            using (var sr = _fileInfo.OpenText())
             {
                 int.TryParse(sr.ReadLine(), out var highScore);
                 return highScore;
@@ -26,15 +43,14 @@ namespace SpaceInvaders
 
         public void Save(int highScore)
         {
-            var fileInfo = new FileInfo(_fileName);
 
-            if (fileInfo.Directory != null && !fileInfo.Directory.Exists)
-                fileInfo.Directory.Create();
+            if (_fileInfo.Directory != null && !_fileInfo.Directory.Exists)
+                _fileInfo.Directory.Create();
 
-            if (fileInfo.Exists)
-                fileInfo.Delete();
+            if (_fileInfo.Exists)
+                _fileInfo.Delete();
 
-            using (var sw = fileInfo.CreateText())
+            using (var sw = _fileInfo.CreateText())
             {
                 sw.WriteLine(highScore);
             }

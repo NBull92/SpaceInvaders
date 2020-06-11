@@ -94,6 +94,7 @@
     </ApplicationDefinition>
     <Compile Include="Game Managers\BunkerManager.cs" />
     <Compile Include="Game Managers\IHudManager.cs" />
+    <Compile Include="Iterator\IIterator.cs" />
     <Compile Include="ScoreFile.cs" />
     <Compile Include="GameObjects\Bunker.cs" />
     <Compile Include="Game Managers\ScoreManager.cs" />
@@ -167,5 +168,6 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -70,7 +70,7 @@ namespace SpaceInvaders
             GameOver?.Invoke(this, EventArgs.Empty);
         }
 
-        public void Detect()
+        private void Detect()
         {
             if (_player.Bullets.Any() && _aliens.AnyAlive())
             {
